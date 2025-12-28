@@ -5,10 +5,13 @@
  *
  * @example
  * ```typescript
- * import { createMindsAgent, initMindRegistry } from 'mastra-minds';
+ * import { createMindsAgent, initMindRegistry, FileSystemProvider } from 'mastra-minds';
  *
- * // Initialize minds from a directory
- * await initMindRegistry('./minds');
+ * // Initialize with a provider
+ * await initMindRegistry(new FileSystemProvider('./minds'));
+ *
+ * // Or use the convenience function
+ * await initMindRegistryFromPath('./minds');
  *
  * // Create an agent with minds support
  * const agent = createMindsAgent({
@@ -20,11 +23,12 @@
  */
 
 // Core exports
-export { parseMindMd, loadMind } from "./parser";
+export { parseMindMd } from "./parser";
 export {
   MindRegistry,
   getMindRegistry,
   initMindRegistry,
+  initMindRegistryFromPath,
 } from "./registry";
 export {
   loadMindTool,
@@ -34,8 +38,17 @@ export {
   mindTools,
 } from "./tools";
 
+// Providers
+export { FileSystemProvider } from "./providers";
+
 // Types
-export type { Mind, MindFrontmatter, MindMetadata } from "./types";
+export type {
+  Mind,
+  MindFrontmatter,
+  MindMetadata,
+  MindsProvider,
+  ScriptResult,
+} from "./types";
 export { MindFrontmatterSchema } from "./types";
 
 // High-level API

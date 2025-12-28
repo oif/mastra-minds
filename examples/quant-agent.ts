@@ -10,7 +10,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import {
   createMindsAgent,
-  initMindRegistry,
+  initMindRegistryFromPath,
   getMindRegistry,
 } from "../packages/mastra-minds/src";
 
@@ -59,7 +59,7 @@ const getStockPriceTool = createTool({
 
 async function main() {
   // 1. 初始化 minds
-  await initMindRegistry("./examples/minds");
+  await initMindRegistryFromPath("./examples/minds");
 
   // 2. 创建量化交易 Agent（注册自定义工具）
   const agent = createMindsAgent({

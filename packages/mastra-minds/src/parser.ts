@@ -3,7 +3,10 @@ import { MindFrontmatterSchema, type Mind } from "./types";
 /**
  * Parse YAML frontmatter from MIND.md content
  */
-function parseFrontmatter(content: string): { frontmatter: Record<string, unknown>; body: string } {
+function parseFrontmatter(content: string): {
+  frontmatter: Record<string, unknown>;
+  body: string;
+} {
   const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
   const match = content.match(frontmatterRegex);
 
@@ -77,30 +80,18 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, unknow
 /**
  * Parse a MIND.md file content into a Mind object
  */
-export function parseMindMd(content: string, baseDir: string): Mind {
+export function parseMindMd(content: string): Mind {
   const { frontmatter, body } = parseFrontmatter(content);
 
   // Validate frontmatter against schema
   const validatedFrontmatter = MindFrontmatterSchema.parse(frontmatter);
 
   return {
+    metadata: {
+      name: validatedFrontmatter.name,
+      description: validatedFrontmatter.description,
+    },
     frontmatter: validatedFrontmatter,
     content: body,
-    baseDir,
   };
-}
-
-/**
- * Load and parse a mind from a directory
- */
-export async function loadMind(mindDir: string): Promise<Mind> {
-  const mindMdPath = `${mindDir}/MIND.md`;
-  const file = Bun.file(mindMdPath);
-
-  if (!(await file.exists())) {
-    throw new Error(`MIND.md not found in ${mindDir}`);
-  }
-
-  const content = await file.text();
-  return parseMindMd(content, mindDir);
 }

@@ -3,8 +3,7 @@ import { z } from "zod";
 import { getMindRegistry } from "./registry";
 
 /**
- * Mind Loader Tool - Core of the prompt injection system
- * When invoked, loads the full mind content and returns it for the agent to follow
+ * Load Mind Tool - Core of the prompt injection system
  */
 export const loadMindTool = createTool({
   id: "load-mind",
@@ -19,7 +18,6 @@ guide your subsequent actions.`,
     success: z.boolean(),
     mindName: z.string().optional(),
     instructions: z.string().optional(),
-    baseDir: z.string().optional(),
     allowedTools: z.array(z.string()).optional(),
     message: z.string().optional(),
   }),
@@ -41,16 +39,15 @@ guide your subsequent actions.`,
 
     return {
       success: true,
-      mindName: mind.frontmatter.name,
+      mindName: mind.metadata.name,
       instructions: mind.content,
-      baseDir: mind.baseDir,
       allowedTools,
     };
   },
 });
 
 /**
- * Read Mind Resource Tool - For loading references/scripts on-demand (Level 3)
+ * Read Mind Resource Tool
  */
 export const readMindResourceTool = createTool({
   id: "read-mind-resource",
@@ -70,51 +67,42 @@ when the mind instructions reference them.`,
   }),
   execute: async (inputData) => {
     const registry = getMindRegistry();
-    const mind = await registry.loadMind(inputData.mindName);
 
-    if (!mind) {
+    if (!(await registry.hasMind(inputData.mindName))) {
       return {
         success: false,
         message: `Mind "${inputData.mindName}" not found`,
       };
     }
 
-    // Security: prevent path traversal
-    const normalizedPath = inputData.resourcePath.replace(/\.\./g, "");
-    const fullPath = `${mind.baseDir}/${normalizedPath}`;
+    const content = await registry.readResource(
+      inputData.mindName,
+      inputData.resourcePath
+    );
 
-    try {
-      const file = Bun.file(fullPath);
-      if (!(await file.exists())) {
-        return {
-          success: false,
-          message: `Resource not found: ${normalizedPath}`,
-        };
-      }
-
-      const content = await file.text();
-      return {
-        success: true,
-        content,
-      };
-    } catch (err) {
+    if (content === undefined) {
       return {
         success: false,
-        message: `Failed to read resource: ${err}`,
+        message: `Resource not found: ${inputData.resourcePath}`,
       };
     }
+
+    return {
+      success: true,
+      content,
+    };
   },
 });
 
 /**
- * Execute Mind Script Tool - Run scripts from mind's scripts/ directory
- * V1: Direct execution without sandbox (development only)
+ * Execute Mind Script Tool
  */
 export const executeMindScriptTool = createTool({
   id: "execute-mind-script",
   description: `Execute a script from a mind's scripts/ directory.
 Use this when mind instructions tell you to run a script for deterministic operations.
-Scripts can be .ts, .js, .sh, or .py files.`,
+Scripts can be .ts, .js, .sh, or .py files.
+Note: Not all providers support script execution.`,
   inputSchema: z.object({
     mindName: z.string().describe("The name of the mind"),
     scriptPath: z
@@ -134,83 +122,46 @@ Scripts can be .ts, .js, .sh, or .py files.`,
   }),
   execute: async (inputData) => {
     const registry = getMindRegistry();
-    const mind = await registry.loadMind(inputData.mindName);
 
-    if (!mind) {
+    if (!registry.supportsScripts()) {
+      return {
+        success: false,
+        message:
+          "Script execution is not supported by the current minds provider",
+      };
+    }
+
+    if (!(await registry.hasMind(inputData.mindName))) {
       return {
         success: false,
         message: `Mind "${inputData.mindName}" not found`,
       };
     }
 
-    // Security: only allow scripts/ directory, prevent path traversal
-    const scriptPath = inputData.scriptPath.replace(/\.\./g, "");
-    const fullPath = `${mind.baseDir}/scripts/${scriptPath}`;
+    const result = await registry.executeScript(
+      inputData.mindName,
+      inputData.scriptPath,
+      inputData.args
+    );
 
-    // Determine executor based on extension (check before file exists)
-    const ext = scriptPath.split(".").pop()?.toLowerCase();
-    let command: string[];
-
-    switch (ext) {
-      case "ts":
-      case "js":
-        command = ["bun", fullPath, ...(inputData.args || [])];
-        break;
-      case "sh":
-        command = ["bash", fullPath, ...(inputData.args || [])];
-        break;
-      case "py":
-        command = ["python3", fullPath, ...(inputData.args || [])];
-        break;
-      default:
-        return {
-          success: false,
-          message: `Unsupported script type: .${ext}. Use .ts, .js, .sh, or .py`,
-        };
-    }
-
-    // Check file exists
-    const file = Bun.file(fullPath);
-    if (!(await file.exists())) {
+    if (!result) {
       return {
         success: false,
-        message: `Script not found: scripts/${scriptPath}`,
+        message: "Script execution failed",
       };
     }
 
-    try {
-      const proc = Bun.spawn(command, {
-        cwd: mind.baseDir,
-        stdout: "pipe",
-        stderr: "pipe",
-        env: {
-          ...process.env,
-          MIND_NAME: mind.frontmatter.name,
-          MIND_DIR: mind.baseDir,
-        },
-      });
-
-      const stdout = await new Response(proc.stdout).text();
-      const stderr = await new Response(proc.stderr).text();
-      const exitCode = await proc.exited;
-
-      return {
-        success: exitCode === 0,
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
-        exitCode,
-      };
-    } catch (err) {
-      return {
-        success: false,
-        message: `Execution failed: ${err}`,
-      };
-    }
+    return {
+      success: result.success,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+    };
   },
 });
 
 /**
- * List Minds Tool - Show available minds
+ * List Minds Tool
  */
 export const listMindsTool = createTool({
   id: "list-minds",
