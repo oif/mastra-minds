@@ -1,0 +1,25 @@
+{
+  "name": "skills-playground",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "dev": "mastra dev",
+    "build": "mastra build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^25.0.3",
+    "mastra": "beta"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "1",
+    "@mastra/core": "^1.0.0-beta.15",
+    "zod": "^4"
+  }
+}
