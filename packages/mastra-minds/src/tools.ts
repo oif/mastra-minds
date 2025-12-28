@@ -21,7 +21,7 @@ guide your subsequent actions.`,
     instructions: z.string().optional(),
     baseDir: z.string().optional(),
     allowedTools: z.array(z.string()).optional(),
-    error: z.string().optional(),
+    message: z.string().optional(),
   }),
   execute: async (inputData) => {
     const registry = getMindRegistry();
@@ -30,7 +30,7 @@ guide your subsequent actions.`,
     if (!mind) {
       return {
         success: false,
-        error: `Mind "${inputData.name}" not found. Available minds: ${registry.listMinds().join(", ")}`,
+        message: `Mind "${inputData.name}" not found. Available minds: ${registry.listMinds().join(", ")}`,
       };
     }
 
@@ -66,7 +66,7 @@ when the mind instructions reference them.`,
   outputSchema: z.object({
     success: z.boolean(),
     content: z.string().optional(),
-    error: z.string().optional(),
+    message: z.string().optional(),
   }),
   execute: async (inputData) => {
     const registry = getMindRegistry();
@@ -75,7 +75,7 @@ when the mind instructions reference them.`,
     if (!mind) {
       return {
         success: false,
-        error: `Mind "${inputData.mindName}" not found`,
+        message: `Mind "${inputData.mindName}" not found`,
       };
     }
 
@@ -88,7 +88,7 @@ when the mind instructions reference them.`,
       if (!(await file.exists())) {
         return {
           success: false,
-          error: `Resource not found: ${normalizedPath}`,
+          message: `Resource not found: ${normalizedPath}`,
         };
       }
 
@@ -97,10 +97,10 @@ when the mind instructions reference them.`,
         success: true,
         content,
       };
-    } catch (error) {
+    } catch (err) {
       return {
         success: false,
-        error: `Failed to read resource: ${error}`,
+        message: `Failed to read resource: ${err}`,
       };
     }
   },
@@ -130,7 +130,7 @@ Scripts can be .ts, .js, .sh, or .py files.`,
     stdout: z.string().optional(),
     stderr: z.string().optional(),
     exitCode: z.number().optional(),
-    error: z.string().optional(),
+    message: z.string().optional(),
   }),
   execute: async (inputData) => {
     const registry = getMindRegistry();
@@ -139,7 +139,7 @@ Scripts can be .ts, .js, .sh, or .py files.`,
     if (!mind) {
       return {
         success: false,
-        error: `Mind "${inputData.mindName}" not found`,
+        message: `Mind "${inputData.mindName}" not found`,
       };
     }
 
@@ -165,7 +165,7 @@ Scripts can be .ts, .js, .sh, or .py files.`,
       default:
         return {
           success: false,
-          error: `Unsupported script type: .${ext}. Use .ts, .js, .sh, or .py`,
+          message: `Unsupported script type: .${ext}. Use .ts, .js, .sh, or .py`,
         };
     }
 
@@ -174,7 +174,7 @@ Scripts can be .ts, .js, .sh, or .py files.`,
     if (!(await file.exists())) {
       return {
         success: false,
-        error: `Script not found: scripts/${scriptPath}`,
+        message: `Script not found: scripts/${scriptPath}`,
       };
     }
 
@@ -200,10 +200,10 @@ Scripts can be .ts, .js, .sh, or .py files.`,
         stderr: stderr.trim(),
         exitCode,
       };
-    } catch (error) {
+    } catch (err) {
       return {
         success: false,
-        error: `Execution failed: ${error}`,
+        message: `Execution failed: ${err}`,
       };
     }
   },
