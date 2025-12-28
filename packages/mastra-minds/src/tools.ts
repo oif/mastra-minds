@@ -68,7 +68,7 @@ when the mind instructions reference them.`,
   execute: async (inputData) => {
     const registry = getMindRegistry();
 
-    if (!(await registry.hasMind(inputData.mindName))) {
+    if (!registry.hasMind(inputData.mindName)) {
       return {
         success: false,
         message: `Mind "${inputData.mindName}" not found`,
@@ -123,18 +123,17 @@ Note: Not all providers support script execution.`,
   execute: async (inputData) => {
     const registry = getMindRegistry();
 
-    if (!registry.supportsScripts()) {
-      return {
-        success: false,
-        message:
-          "Script execution is not supported by the current minds provider",
-      };
-    }
-
-    if (!(await registry.hasMind(inputData.mindName))) {
+    if (!registry.hasMind(inputData.mindName)) {
       return {
         success: false,
         message: `Mind "${inputData.mindName}" not found`,
+      };
+    }
+
+    if (!registry.supportsScripts(inputData.mindName)) {
+      return {
+        success: false,
+        message: "Script execution is not supported by this mind's provider",
       };
     }
 
