@@ -1,4 +1,5 @@
 import { Glob } from "bun";
+import { resolve } from "path";
 import { parseMindMd } from "../parser";
 import type { Mind, MindMetadata, MindsProvider, ScriptResult } from "../types";
 
@@ -128,7 +129,8 @@ export class FileSystemProvider implements MindsProvider {
 
     // Security: only allow scripts/ directory, prevent path traversal
     const normalizedPath = scriptPath.replace(/\.\./g, "");
-    const fullPath = `${mindDir}/scripts/${normalizedPath}`;
+    const fullPath = resolve(mindDir, "scripts", normalizedPath);
+    const absoluteMindDir = resolve(mindDir);
 
     // Determine executor based on extension
     const ext = scriptPath.split(".").pop()?.toLowerCase();
@@ -167,13 +169,13 @@ export class FileSystemProvider implements MindsProvider {
 
     try {
       const proc = Bun.spawn(command, {
-        cwd: mindDir,
+        cwd: absoluteMindDir,
         stdout: "pipe",
         stderr: "pipe",
         env: {
           ...process.env,
           MIND_NAME: mindName,
-          MIND_DIR: mindDir,
+          MIND_DIR: absoluteMindDir,
         },
       });
 

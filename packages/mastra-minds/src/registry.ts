@@ -185,6 +185,14 @@ export function getMindRegistry(): MindRegistry {
 }
 
 /**
+ * Reset the global MindRegistry instance (for testing purposes)
+ * @internal
+ */
+export function resetMindRegistry(): void {
+  registryInstance = null;
+}
+
+/**
  * Initialize the global MindRegistry
  */
 export async function initMindRegistry(

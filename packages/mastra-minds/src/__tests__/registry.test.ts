@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, spyOn } from "bun:test";
-import { MindRegistry, initMindRegistry, getMindRegistry } from "../registry";
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { MindRegistry, initMindRegistry, getMindRegistry, resetMindRegistry } from "../registry";
 import type { MindsProvider, MindMetadata, Mind } from "../types";
 
 class MockProvider implements MindsProvider {
@@ -28,14 +28,6 @@ class MockProvider implements MindsProvider {
   }
 
   async readResource(): Promise<string | undefined> {
-    return undefined;
-  }
-
-  async executeScript(
-    mindName: string,
-    scriptPath: string,
-    args?: string[]
-  ): Promise<any> {
     return undefined;
   }
 }
@@ -288,6 +280,14 @@ describe("MindRegistry", () => {
 });
 
 describe("global registry instance", () => {
+  beforeEach(() => {
+    resetMindRegistry();
+  });
+
+  afterEach(() => {
+    resetMindRegistry();
+  });
+
   it("should throw error when getting uninitialized registry", () => {
     expect(() => getMindRegistry()).toThrow(
       "MindRegistry not initialized. Call initMindRegistry first."

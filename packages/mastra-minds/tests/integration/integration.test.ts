@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { initMindRegistry, getMindRegistry, createMindsAgent } from "../../src/index";
+import { initMindRegistry, getMindRegistry, createMindsAgent, resetMindRegistry } from "../../src/index";
 import { FileSystemProvider } from "../../src/providers/filesystem";
 import { write } from "bun";
 import { rm, mkdir } from "node:fs/promises";
@@ -8,7 +8,8 @@ describe("Integration Tests", () => {
   const testMindsDir = "./tests/fixtures/integration-minds";
 
   beforeAll(async () => {
-    await mkdir(testMindsDir, { recursive: true });
+    await mkdir(`${testMindsDir}/test-mind/scripts`, { recursive: true });
+    await mkdir(`${testMindsDir}/test-mind/references`, { recursive: true });
 
     await write(`${testMindsDir}/test-mind/MIND.md`, `---
 name: test-mind
@@ -32,6 +33,7 @@ When the user asks for help with testing, load this mind.`);
   });
 
   afterAll(async () => {
+    resetMindRegistry();
     await rm(testMindsDir, { recursive: true, force: true });
   });
 

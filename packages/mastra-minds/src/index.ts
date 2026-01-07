@@ -23,7 +23,7 @@
 
 // Core exports
 export { parseMindMd } from "./parser";
-export { MindRegistry, getMindRegistry, initMindRegistry } from "./registry";
+export { MindRegistry, getMindRegistry, initMindRegistry, resetMindRegistry } from "./registry";
 export type { MindRegistryOptions, ConflictStrategy } from "./registry";
 export {
   loadMindTool,
