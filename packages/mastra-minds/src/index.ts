@@ -7,11 +7,10 @@
  * ```typescript
  * import { createMindsAgent, initMindRegistry, FileSystemProvider } from 'mastra-minds';
  *
- * // Initialize with a provider
- * await initMindRegistry(new FileSystemProvider('./minds'));
- *
- * // Or use the convenience function
- * await initMindRegistryFromPath('./minds');
+ * // Initialize with provider(s)
+ * await initMindRegistry({
+ *   providers: [new FileSystemProvider('./minds')],
+ * });
  *
  * // Create an agent with minds support
  * const agent = createMindsAgent({
@@ -24,12 +23,8 @@
 
 // Core exports
 export { parseMindMd } from "./parser";
-export {
-  MindRegistry,
-  getMindRegistry,
-  initMindRegistry,
-  initMindRegistryFromPath,
-} from "./registry";
+export { MindRegistry, getMindRegistry, initMindRegistry } from "./registry";
+export type { MindRegistryOptions, ConflictStrategy } from "./registry";
 export {
   loadMindTool,
   readMindResourceTool,

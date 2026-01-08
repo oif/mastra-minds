@@ -1,35 +1,81 @@
-import type { Mind, MindMetadata, MindsProvider } from "./types";
+import type { Mind, MindMetadata, MindsProvider, ScriptResult } from "./types";
 import { FileSystemProvider } from "./providers";
+
+/**
+ * Conflict resolution strategy when multiple providers have the same mind name
+ */
+export type ConflictStrategy = "first" | "last";
+
+/**
+ * Options for MindRegistry
+ */
+export interface MindRegistryOptions {
+  providers: MindsProvider[];
+  conflictStrategy?: ConflictStrategy;
+}
 
 /**
  * MindRegistry - Central access point for minds
  *
- * Wraps a MindsProvider with caching and convenience methods.
+ * Supports multiple providers with configurable conflict resolution.
  */
 export class MindRegistry {
-  private provider: MindsProvider;
+  private providers: MindsProvider[];
+  private strategy: ConflictStrategy;
   private metadataCache: Map<string, MindMetadata> = new Map();
   private mindCache: Map<string, Mind> = new Map();
+  private mindProviderMap: Map<string, MindsProvider> = new Map();
 
-  constructor(provider: MindsProvider) {
-    this.provider = provider;
+  constructor(options: MindRegistryOptions) {
+    this.providers = options.providers;
+    this.strategy = options.conflictStrategy ?? "first";
   }
 
   /**
-   * Initialize the registry by discovering all minds
+   * Initialize the registry by discovering minds from all providers
    */
   async init(): Promise<void> {
-    const minds = await this.provider.discover();
-    for (const mind of minds) {
-      this.metadataCache.set(mind.name, mind);
+    this.metadataCache.clear();
+    this.mindCache.clear();
+    this.mindProviderMap.clear();
+
+    // Process providers in order
+    for (const provider of this.providers) {
+      const minds = await provider.discover();
+
+      for (const mind of minds) {
+        const existing = this.mindProviderMap.get(mind.name);
+
+        if (existing) {
+          if (this.strategy === "first") {
+            console.warn(
+              `Mind "${mind.name}" from [${provider.name}] skipped, already registered from [${existing.name}]`
+            );
+            continue;
+          }
+          console.warn(
+            `Mind "${mind.name}" overwritten: [${existing.name}] -> [${provider.name}]`
+          );
+        }
+
+        this.mindProviderMap.set(mind.name, provider);
+        this.metadataCache.set(mind.name, mind);
+      }
     }
   }
 
   /**
-   * Get the underlying provider
+   * Get the provider for a specific mind
    */
-  getProvider(): MindsProvider {
-    return this.provider;
+  getProviderForMind(name: string): MindsProvider | undefined {
+    return this.mindProviderMap.get(name);
+  }
+
+  /**
+   * Get all providers
+   */
+  getProviders(): MindsProvider[] {
+    return this.providers;
   }
 
   /**
@@ -47,7 +93,12 @@ export class MindRegistry {
       return this.mindCache.get(name);
     }
 
-    const mind = await this.provider.loadMind(name);
+    const provider = this.mindProviderMap.get(name);
+    if (!provider) {
+      return undefined;
+    }
+
+    const mind = await provider.loadMind(name);
     if (mind) {
       this.mindCache.set(name, mind);
     }
@@ -57,11 +108,8 @@ export class MindRegistry {
   /**
    * Check if a mind exists
    */
-  async hasMind(name: string): Promise<boolean> {
-    if (this.metadataCache.has(name)) {
-      return true;
-    }
-    return this.provider.hasMind(name);
+  hasMind(name: string): boolean {
+    return this.mindProviderMap.has(name);
   }
 
   /**
@@ -71,7 +119,8 @@ export class MindRegistry {
     mindName: string,
     path: string
   ): Promise<string | undefined> {
-    return this.provider.readResource(mindName, path);
+    const provider = this.mindProviderMap.get(mindName);
+    return provider?.readResource(mindName, path);
   }
 
   /**
@@ -81,21 +130,20 @@ export class MindRegistry {
     mindName: string,
     scriptPath: string,
     args?: string[]
-  ): Promise<
-    | { success: boolean; stdout: string; stderr: string; exitCode: number }
-    | undefined
-  > {
-    if (!this.provider.executeScript) {
+  ): Promise<ScriptResult | undefined> {
+    const provider = this.mindProviderMap.get(mindName);
+    if (!provider?.executeScript) {
       return undefined;
     }
-    return this.provider.executeScript(mindName, scriptPath, args);
+    return provider.executeScript(mindName, scriptPath, args);
   }
 
   /**
-   * Check if the provider supports script execution
+   * Check if the provider for a mind supports script execution
    */
-  supportsScripts(): boolean {
-    return typeof this.provider.executeScript === "function";
+  supportsScripts(mindName: string): boolean {
+    const provider = this.mindProviderMap.get(mindName);
+    return typeof provider?.executeScript === "function";
   }
 
   /**
@@ -137,21 +185,12 @@ export function getMindRegistry(): MindRegistry {
 }
 
 /**
- * Initialize the global MindRegistry with a provider
+ * Initialize the global MindRegistry
  */
 export async function initMindRegistry(
-  provider: MindsProvider
+  options: MindRegistryOptions
 ): Promise<MindRegistry> {
-  registryInstance = new MindRegistry(provider);
+  registryInstance = new MindRegistry(options);
   await registryInstance.init();
   return registryInstance;
-}
-
-/**
- * Initialize with filesystem provider (convenience function)
- */
-export async function initMindRegistryFromPath(
-  mindsDir: string
-): Promise<MindRegistry> {
-  return initMindRegistry(new FileSystemProvider(mindsDir));
 }
