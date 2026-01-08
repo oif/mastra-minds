@@ -4,17 +4,18 @@ Agent Minds system for [Mastra](https://mastra.ai) - Claude-style skills with pr
 
 ## Features
 
-- 📦 **MIND.md Format** - Simple markdown-based mind definition
-- 🔄 **Progressive Disclosure** - Load metadata first, full content on-demand
-- 🛠️ **Script Execution** - Run TypeScript/JavaScript/Python/Bash scripts
-- 🔌 **Mastra Integration** - Drop-in tools for any Mastra agent
+- **MIND.md Format** - Simple markdown-based mind definition with YAML frontmatter
+- **Progressive Disclosure** - Load metadata first, full content on-demand
+- **Script Execution** - Run TypeScript/JavaScript/Python/Bash scripts
+- **Multi-Provider** - Support multiple mind sources with conflict resolution
+- **Mastra Integration** - Drop-in tools for any Mastra agent
 
 ## Installation
 
 ```bash
-bun add mastra-minds
-# or
 npm install mastra-minds
+# or
+bun add mastra-minds
 ```
 
 ## Quick Start
@@ -32,7 +33,7 @@ minds/
 ```
 
 ```markdown
-# minds/my-mind/MIND.md
+<!-- minds/my-mind/MIND.md -->
 ---
 name: my-mind
 description: Does X when user asks for Y
@@ -51,15 +52,17 @@ Run `execute-mind-script: my-mind, helper.ts` for automation.
 ### 2. Initialize and create agent
 
 ```typescript
-import { createMindsAgent, initMindRegistry } from 'mastra-minds';
+import { createMindsAgent, initMindRegistry, FileSystemProvider } from 'mastra-minds';
 
-// Initialize mind registry
-await initMindRegistry('./minds');
+// Initialize mind registry with provider(s)
+await initMindRegistry({
+  providers: [new FileSystemProvider('./minds')],
+});
 
-// Create agent with minds
+// Create agent with minds support
 const agent = createMindsAgent({
   name: 'My Agent',
-  model: 'your-model',
+  model: 'gpt-4o',
   instructions: 'You are a helpful assistant.',
 });
 
@@ -67,25 +70,33 @@ const agent = createMindsAgent({
 const response = await agent.generate('Help me with X');
 ```
 
-### 3. Or integrate manually
+### 3. Manual integration
 
 ```typescript
-import { Mastra } from '@mastra/core';
-import { initMindRegistry, mindTools, generateMindsInstructions, getMindRegistry } from 'mastra-minds';
+import { Agent } from '@mastra/core/agent';
+import { initMindRegistry, getMindRegistry, mindTools, withMinds, FileSystemProvider } from 'mastra-minds';
 
-await initMindRegistry('./minds');
+await initMindRegistry({
+  providers: [new FileSystemProvider('./minds')],
+});
 
+// Option A: Use withMinds helper
+const agent = new Agent({
+  name: 'My Agent',
+  model: 'gpt-4o',
+  instructions: withMinds('You are a helpful assistant.'),
+  tools: { ...mindTools, ...myOtherTools },
+});
+
+// Option B: Manual injection
 const registry = getMindRegistry();
-const mindsXml = registry.generateAvailableMindsXml();
+const mindsInfo = registry.generateAvailableMinds();
 
 const agent = new Agent({
   name: 'My Agent',
-  model: myModel,
-  instructions: `Base instructions...\n\n${generateMindsInstructions(mindsXml)}`,
-  tools: {
-    ...mindTools,
-    ...myOtherTools,
-  },
+  model: 'gpt-4o',
+  instructions: `Your instructions...\n\n${mindsInfo}`,
+  tools: { ...mindTools, ...myOtherTools },
 });
 ```
 
@@ -96,7 +107,6 @@ const agent = new Agent({
 name: mind-name              # Required: lowercase, hyphens only
 description: What it does    # Required: when to use this mind
 allowed-tools: Read Write    # Optional: pre-approved tools
-model: your-model            # Optional: model override
 ---
 
 # Mind Title
@@ -131,21 +141,68 @@ minds/
 
 ## API Reference
 
-### `initMindRegistry(mindsDir: string)`
+### `initMindRegistry(options)`
 
-Initialize the mind registry by scanning a directory.
+Initialize the global mind registry.
 
-### `createMindsAgent(options: MindsAgentOptions)`
+```typescript
+await initMindRegistry({
+  providers: [new FileSystemProvider('./minds')],
+  conflictStrategy: 'first', // 'first' | 'last' - default: 'first'
+});
+```
+
+### `FileSystemProvider`
+
+Load minds from a local directory.
+
+```typescript
+const provider = new FileSystemProvider('./path/to/minds');
+```
+
+### `createMindsAgent(options)`
 
 Create a Mastra agent with minds support.
+
+```typescript
+const agent = createMindsAgent({
+  name: 'My Agent',
+  model: 'gpt-4o',
+  instructions: 'Your base instructions',
+  additionalTools: { myTool },
+  mindsPosition: 'after', // 'before' | 'after' - default: 'after'
+});
+```
+
+### `withMinds(instructions, position?)`
+
+Wrap instructions with minds system prompt.
+
+```typescript
+const instructions = withMinds('Your instructions', 'after');
+```
+
+### `getMindRegistry()`
+
+Get the initialized registry instance.
+
+```typescript
+const registry = getMindRegistry();
+const minds = registry.listMinds();
+const mind = await registry.loadMind('my-mind');
+```
 
 ### `mindTools`
 
 Object containing all mind-related tools for manual integration.
 
-### `getMindRegistry()`
+```typescript
+import { mindTools } from 'mastra-minds';
 
-Get the initialized registry instance.
+const agent = new Agent({
+  tools: { ...mindTools, ...otherTools },
+});
+```
 
 ## License
 

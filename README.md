@@ -2,42 +2,77 @@
 
 A Claude-style "skills" system for [Mastra](https://mastra.ai) agents with progressive disclosure.
 
-## Structure
+[![npm version](https://img.shields.io/npm/v/mastra-minds.svg)](https://www.npmjs.com/package/mastra-minds)
+[![CI](https://github.com/oif/mastra-minds/actions/workflows/test.yml/badge.svg)](https://github.com/oif/mastra-minds/actions/workflows/test.yml)
 
-```
-.
-├── packages/mastra-minds/   # Core library
-└── examples/
-    ├── quant-agent.ts       # Example agent
-    └── minds/               # Example mind definitions
-        └── <mind-name>/
-            ├── MIND.md      # Instructions (YAML frontmatter + markdown)
-            ├── scripts/     # Executable scripts
-            └── references/  # Reference documents
-```
-
-## Usage
-
-```typescript
-import { createMindsAgent, initMindRegistry } from "mastra-minds";
-
-await initMindRegistry("./minds");
-
-const agent = createMindsAgent({
-  name: "My Agent",
-  model: "gpt-4",
-  instructions: "You are a helpful assistant.",
-  additionalTools: { /* your custom tools */ },
-});
-
-const response = await agent.generate("your query");
-```
-
-## Run Example
+## Installation
 
 ```bash
-bun examples/quant-agent.ts
-
-# With verbose output
-VERBOSE=1 bun examples/quant-agent.ts
+npm install mastra-minds
+# or
+bun add mastra-minds
 ```
+
+## Quick Start
+
+```typescript
+import { createMindsAgent, initMindRegistry, FileSystemProvider } from 'mastra-minds';
+
+// Initialize with filesystem provider
+await initMindRegistry({
+  providers: [new FileSystemProvider('./minds')],
+});
+
+// Create agent with minds support
+const agent = createMindsAgent({
+  name: 'My Agent',
+  model: 'gpt-4o',
+  instructions: 'You are a helpful assistant.',
+});
+
+const response = await agent.generate('Help me with...');
+```
+
+## Create a Mind
+
+```
+minds/
+└── my-mind/
+    ├── MIND.md          # Required: mind definition
+    ├── scripts/         # Optional: executable scripts
+    └── references/      # Optional: reference docs
+```
+
+**MIND.md**:
+```markdown
+---
+name: my-mind
+description: Does X when user asks for Y
+allowed-tools: Read Write
+---
+
+# My Mind
+
+Instructions for the agent...
+```
+
+## Documentation
+
+See [packages/mastra-minds/README.md](./packages/mastra-minds/README.md) for full documentation.
+
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Run tests
+bun test
+
+# Run example
+bun examples/quant-agent.ts
+```
+
+## License
+
+MIT
